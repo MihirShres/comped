@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+// The publishable key is meant to ship in browser code; row-level security in the database protects the data.
+const url = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://defpepvvmnjzyblpspya.supabase.co';
+const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || 'sb_publishable_SzIrKjVzeFCqCp77zd9DRg_18Sr5Zbo';
 
 export const supabase = createClient(url, key, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
