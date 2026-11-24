@@ -24,7 +24,11 @@ export default function AuthPage() {
           options: { data: { role, full_name: name.trim() }, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
         });
         if (error) throw error;
-        if (!data.session) setCheckEmail(true);
+        if (!data.session) {
+          // Accounts are confirmed automatically, so sign straight in.
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+          if (signInError) setCheckEmail(true);
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
