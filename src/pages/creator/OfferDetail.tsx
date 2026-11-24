@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase, money, errMsg, fmtFollowers, type Offer, type Claim } from '../../lib';
+import { supabase, money, errMsg, fmtFollowers, safePhoto, type Offer, type Claim } from '../../lib';
 import { useAuth } from '../../auth';
 import { ErrorNote, Header, Logo, Spinner } from '../../ui';
 
@@ -77,6 +77,7 @@ export default function OfferDetail() {
   return (
     <div className="page no-pad-top">
       <div className="hero" style={{ background: b.brand_color + '33' }}>
+        {safePhoto(b.photo_url) && <img className="hero-photo" src={safePhoto(b.photo_url)!} alt="" />}
         <button className="circle-btn" aria-label="Back" onClick={() => nav(-1)}>
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16130F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
@@ -84,6 +85,8 @@ export default function OfferDetail() {
       <div className="hero-logo"><Logo business={b} size={68} /></div>
       <h1 className="title">{b.name}</h1>
       <p className="muted">{[b.category, b.neighborhood, b.address].filter(Boolean).join(' · ')}</p>
+      {b.description && <p className="body-text">{b.description}</p>}
+      {b.is_demo && <p className="note warn">Sample listing — shows how an offer works. It can't be claimed.</p>}
 
       <div className="card table">
         <div className="tr"><span>Comp value</span><strong>{money(offer.comp_cents)}</strong></div>
@@ -128,7 +131,7 @@ export default function OfferDetail() {
           <ErrorNote msg={error} />
           {tooSmall && <p className="muted small">This offer needs {fmtFollowers(offer.min_followers)}+ followers. Update your profile if that's out of date.</p>}
           <div className="sticky-cta">
-            <button className="btn dark" disabled={!time || busy || left <= 0} onClick={claim}>
+            <button className="btn dark" disabled={!time || busy || left <= 0 || b.is_demo} onClick={claim}>
               {busy ? 'Claiming…' : time && day ? `Claim for ${slotDate(time).toLocaleDateString([], { weekday: 'short' })}, ${label12(time)}` : 'Pick a time'}
             </button>
           </div>

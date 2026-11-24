@@ -29,7 +29,12 @@ export interface Business {
   instagram_handle: string;
   brand_color: string;
   monthly_budget_cents: number;
+  is_demo: boolean;
+  photo_url: string | null;
+  description: string;
 }
+
+export const safePhoto = (url: string | null | undefined) => (url && url.startsWith('https://') ? url : null);
 
 export interface Offer {
   id: string;

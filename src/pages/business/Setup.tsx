@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, errMsg } from '../../lib';
+import { supabase, errMsg, safePhoto } from '../../lib';
 import { useAuth } from '../../auth';
 import { ErrorNote, Header, Logo } from '../../ui';
 
@@ -17,6 +17,9 @@ export default function BusinessSetup({ editing = false }: { editing?: boolean }
   const [ig, setIg] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [budget, setBudget] = useState('500');
+  const [description, setDescription] = useState('');
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +32,8 @@ export default function BusinessSetup({ editing = false }: { editing?: boolean }
     setIg(business.instagram_handle);
     setColor(business.brand_color);
     setBudget(String(Math.round(business.monthly_budget_cents / 100)));
+    setDescription(business.description ?? '');
+    setPhoto(business.photo_url);
   }, [business]);
 
   async function save(e: FormEvent) {
@@ -44,6 +49,8 @@ export default function BusinessSetup({ editing = false }: { editing?: boolean }
       instagram_handle: ig.trim().replace(/^@/, ''),
       brand_color: color,
       monthly_budget_cents: Math.max(0, Math.round(parseFloat(budget || '0') * 100)),
+      description: description.trim(),
+      photo_url: photo,
     };
     const { error } = business
       ? await supabase.from('businesses').update(row).eq('id', business.id)
@@ -52,6 +59,20 @@ export default function BusinessSetup({ editing = false }: { editing?: boolean }
     if (error) return setError(errMsg(error));
     await refresh();
     if (editing) nav('/');
+  }
+
+  async function upload(file: File | undefined) {
+    if (!file || !profile) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return setError('Use a JPG, PNG or WebP photo.');
+    if (file.size > 5 * 1024 * 1024) return setError('Photo must be under 5 MB.');
+    setUploading(true);
+    setError(null);
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${profile.id}/cover-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('business-photos').upload(path, file, { contentType: file.type, upsert: false });
+    setUploading(false);
+    if (error) return setError(errMsg(error));
+    setPhoto(supabase.storage.from('business-photos').getPublicUrl(path).data.publicUrl);
   }
 
   return (
@@ -66,7 +87,17 @@ export default function BusinessSetup({ editing = false }: { editing?: boolean }
             <div className="row-meta">{[category, neighborhood].filter(Boolean).join(' · ')}</div>
           </div>
         </div>
+        <div className="field">
+          <span>Cover photo</span>
+          <label className="photo-picker" style={safePhoto(photo) ? { backgroundImage: `url("${safePhoto(photo)}")` } : undefined}>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
+            <span>{uploading ? 'Uploading…' : photo ? 'Change photo' : 'Add a photo of your food or space'}</span>
+          </label>
+        </div>
         <label className="field"><span>Business name</span><input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required /></label>
+        <label className="field"><span>Short description</span>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} rows={2} placeholder="What you're known for, in a sentence." />
+        </label>
         <label className="field"><span>Category</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
         </label>
